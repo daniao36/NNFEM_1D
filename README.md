@@ -1,18 +1,18 @@
 ﻿# 1D Neural Network Finite Element Method (HiDeNN)
 
-這個專案使用 **HiDeNN (Hierarchical Deep-learning Neural Networks)** 的概念，實作一個一維有限元素範例，並以 PyTorch 的 `autograd` 計算位移、應變與應變梯度。
+這個專案使用 **HiDeNN (Hierarchical Deep-learning Neural Networks)** 的概念，實作一個一維有限元素範例，並以 PyTorch 計算位移、應變與應變梯度。
 
-目前專案聚焦在 1D bar 問題，支援不同元素型式、不同積分方法，以及可選的 `r-adaptivity` 節點重配置。
+目前專案聚焦在 1D bar 問題，支援不同元素型式、不同積分方法，以及可選的`r-adaptivity` 節點優化。我已完成2D與3D程式碼，由於我的論文還未發表，目前不對外公開。
 
 ## Overview
 
 這份實作提供以下能力：
 
-- 支援 `L2` 與 `L3` 一維元素
+- 支援一次與二次一維元素
 - 支援 `Global` 與 `Gauss` 兩種積分策略
 - 使用總勢能最小化作為訓練目標
 - 可切換固定網格或啟用 `r-adaptivity`
-- 輸出位移 `u(x)`、應變 `du/dx`、應變梯度 `d2u/dx2` 與誤差分析圖
+- 輸出位移 `u(x)`、應變 `du/dx`、應變梯度 `d2u/dx2` 與誤差分析
 
 ## Theoretical Basis
 
@@ -53,14 +53,6 @@
 ### Numerical Stability
 
 在 `Gauss` 積分與 `r-adaptivity` 模式下，程式對 Jacobian 接近零的情況加入保護，避免除零或訓練時出現 `NaN`。
-
-## Installation
-
-建議使用 Python 3.8 以上版本。
-
-```bash
-pip install torch numpy matplotlib
-```
 
 ## Usage
 
@@ -146,6 +138,33 @@ STUDY_CONFIG = {
 
 若啟用 `r-adaptivity`，圖中也會顯示初始節點與最終節點的差異，方便觀察節點是否往高梯度區域集中。
 
+## Example Figure
+
+建議把 README 用的圖片放在 `docs/images/` 下面，例如：
+
+```text
+docs/
+`-- images/
+    `-- result.png
+```
+
+然後在 README 中用以下語法插入：
+
+```md
+![Example Result](docs/images/result.png)
+```
+
+範例1 節點固定：
+
+![Example Result](docs/images/NNFEM_1D_1.png)
+
+![Example Result](docs/images/NNFEM_1D_2.png)
+
+範例2 節點優化：
+
+![Example Result](docs/images/NNFEM_1D_3.png)
+
+![Example Result](docs/images/NNFEM_1D_4.png)
 ## Notes
 
 - 使用 `L3` 元素時，`n_nodes` 需要符合三節點元素的配置條件

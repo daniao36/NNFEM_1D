@@ -39,8 +39,8 @@ STUDY_CONFIG = {
     
     # --- 訓練控制 ---
     "optimizer": 'Adam',     # 'Adam' (推薦用於 r-adaptivity) 或 'LBFGS'
-    "freeze_mesh": True,    # True: 固定網格, False: r-adaptivity
-    "num_epochs": 500,      # 若開啟 r-adaptivity，建議增加 epoch
+    "freeze_mesh": False,    # True: 固定網格, False: r-adaptivity
+    "num_epochs": 2000,      # 若開啟 r-adaptivity，建議增加 epoch
     "learning_rate": 1e-3,   # 主要學習率 (位移 u)
     "lr_coord_scale": 0.1,  # 座標 x 的學習率縮放比例 (x_lr = lr * scale)
     
