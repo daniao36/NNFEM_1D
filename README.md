@@ -1,70 +1,153 @@
-# 1D Neural Network Finite Element Method (HiDeNN)
+﻿# 1D Neural Network Finite Element Method (HiDeNN)
 
-本專案實作了一種基於 **HiDeNN (Hierarchical Deep-learning Neural Networks)** 架構的一維有限元素分析工具。本方法將有限元素法（FEM）的形狀函數（Shape Functions）映射為神經網路的層級結構，並利用 PyTorch 的自動微分（Autograd）直接最小化系統總位能，取代傳統 FEM 的剛度矩陣組裝與求解流程。
+這個專案使用 **HiDeNN (Hierarchical Deep-learning Neural Networks)** 的概念，實作一個一維有限元素範例，並以 PyTorch 的 `autograd` 計算位移、應變與應變梯度。
 
-## 1. 理論背景 (Theoretical Basis)
+目前專案聚焦在 1D bar 問題，支援不同元素型式、不同積分方法，以及可選的 `r-adaptivity` 節點重配置。
 
-本程式碼的核心算法與架構開發嚴格遵循以下學術論文提出的理論：
+## Overview
 
-> **Zhang, L., Cheng, L., Li, H., Gao, J., Yu, C., Domel, R., Yang, Y., Tang, S., & Liu, W. K. (2020).**
-> *Hierarchical deep-learning neural networks: finite elements and beyond.*
-> **Computational Mechanics**, 67(1), 207-230. [DOI: 10.1007/s00466-020-01928-9](https://doi.org/10.1007/s00466-020-01928-9)
+這份實作提供以下能力：
 
-### 核心特性：
-* **形狀函數神經網路化**：將傳統 L2（線性）或 L3（二次）形狀函數建構為多層神經網路。例如，利用 ReLU 激活函數的組合特性來精確重現 Hat functions。
-* **變分原理 (Variational Principle)**：求解過程不需組裝剛度矩陣 $[K]$，而是直接優化位能泛函 $\Pi(u) = \int (\frac{1}{2} E A (\frac{du}{dx})^2 - ub) dx$。
-* **r-Adaptivity (網格自適應)**：支援將節點座標 $x$ 視為可訓練參數。透過優化器（如 Adam），網格會自動向解梯度較大（如應力集中）的區域聚集，以極小化數值誤差。
+- 支援 `L2` 與 `L3` 一維元素
+- 支援 `Global` 與 `Gauss` 兩種積分策略
+- 使用總勢能最小化作為訓練目標
+- 可切換固定網格或啟用 `r-adaptivity`
+- 輸出位移 `u(x)`、應變 `du/dx`、應變梯度 `d2u/dx2` 與誤差分析圖
 
----
+## Theoretical Basis
 
-## 2. 專案特點
+此專案的核心概念來自以下論文：
 
-* **支援元素類型**：
-    * **L2 (2-node)**：基於 Hat function 的線性網路。
-    * **L3 (3-node)**：使用乘法塊（Multiplication Block）實作的二次 Lagrange 多項式網路。
-* **數值積分方案**：
-    * **Gauss Quadrature**：於父座標計算並映射，支援精確 Jacobian 轉換與體積積分。
-    * **Global Integration**：使用梯形法則（Trapezoidal rule）進行全域點積分。
-* **穩定性機制**：針對 r-adaptivity 加入了 Jacobian 保護與極小 epsilon 修正，防止網格翻轉導致梯度爆炸 (NaN)。
+> **Zhang, L., Cheng, L., Li, H., Gao, J., Yu, C., Domel, R., Yang, Y., Tang, S., & Liu, W. K. (2020).**  
+> *Hierarchical deep-learning neural networks: finite elements and beyond.*  
+> **Computational Mechanics**, 67(1), 207-230.  
+> DOI: [10.1007/s00466-020-01928-9](https://doi.org/10.1007/s00466-020-01928-9)
 
----
+### Key Ideas
 
-## 3. 安裝與快速上手
+- **Neural shape functions**  
+  以神經網路形式表達 shape functions，同時保留有限元素插值的結構性。
 
-### 環境需求
-請確保您的環境中已安裝以下 Python 套件（建議 Python 3.8 以上）：
+- **Variational formulation**  
+  透過總勢能最小化求解：
+
+  ```math
+  \Pi(u) = \int \left(\frac{1}{2}EA\left(\frac{du}{dx}\right)^2 - u\,b(x)\right)\,dx
+  ```
+
+- **r-adaptivity**  
+  除了位移自由度，也可以把內部節點座標視為可訓練參數，讓節點往高梯度區域移動。
+
+## Supported Features
+
+### Element Types
+
+- `L2`: 2-node linear element
+- `L3`: 3-node quadratic element
+
+### Integration Methods
+
+- `Global`: 在整個區間上以密集取樣搭配 trapezoidal rule 做積分
+- `Gauss`: 逐元素進行 Gaussian quadrature，並處理 parent domain 到 physical domain 的 Jacobian 映射
+
+### Numerical Stability
+
+在 `Gauss` 積分與 `r-adaptivity` 模式下，程式對 Jacobian 接近零的情況加入保護，避免除零或訓練時出現 `NaN`。
+
+## Installation
+
+建議使用 Python 3.8 以上版本。
+
 ```bash
 pip install torch numpy matplotlib
+```
 
-使用方法
-主要實驗控制位於 run_1d_study.py。您可以透過修改檔案內的 STUDY_CONFIG 字典來調整超參數與物理設定：
+## Usage
 
-Python
-# 實驗設定範例 (位於 run_1d_study.py)
-STUDY_CONFIG = {
-    "element_type": 'L2',        # 選擇 L2 或 L3 元素
-    "integration_method": 'Gauss', # 選擇 Global 或 Gauss 積分
-    "freeze_mesh": False,        # 設為 False 以啟動 r-adaptivity (動態網格)
-    "optimizer": 'Adam',         # r-adaptivity 建議使用 Adam
-    "learning_rate": 1e-3,       # 位移 u 的主學習率
-    "lr_coord_scale": 0.1,       # 座標 x 的學習率縮放比例 (防止網格翻轉)
-}
-執行測試：
+主要入口為 [`run_1d_study.py`](/d:/lab/NNFEM_1D/run_1d_study.py)。
 
-Bash
+先在檔案中的 `STUDY_CONFIG` 調整設定，再直接執行：
+
+```bash
 python run_1d_study.py
-4. 專案結構
-Plaintext
+```
+
+### Example Configuration
+
+```python
+STUDY_CONFIG = {
+    "element_type": "L2",
+    "integration_method": "Global",
+    "optimizer": "Adam",
+    "freeze_mesh": True,
+    "num_epochs": 500,
+    "learning_rate": 1e-3,
+    "lr_coord_scale": 0.1,
+    "E": 175.0,
+    "A": 1.0,
+    "bar_length": 10.0,
+    "n_nodes": 23,
+    "gauss_order": 5,
+    "global_points": 2000,
+    "plot_resolution": 400,
+}
+```
+
+### Important Options
+
+- `element_type`: `L2` 或 `L3`
+- `integration_method`: `Global` 或 `Gauss`
+- `freeze_mesh`: `True` 為固定網格，`False` 為啟用 `r-adaptivity`
+- `optimizer`: 目前主要使用 `Adam`，也保留 `LBFGS` 選項
+- `lr_coord_scale`: 啟用 `r-adaptivity` 時，節點座標學習率相對於位移學習率的縮放倍率
+
+## Project Structure
+
+```text
 .
-├── run_1d_study.py          # 實驗執行與參數設定主腳本
-└── src/
-    ├── solvers/
-    │   └── hidenn_1d.py     # HiDeNN 核心求解器與總位能計算邏輯
-    ├── nn_modules/
-    │   └── shape_1d.py      # L2/L3 形狀函數的神經網路實作
-    ├── benchmarks/
-    │   └── bar_hard_case.py # 物理問題定義（邊界條件、體積力、解析解）
-    └── utils/
-        └── visualization_1d.py # 後處理、L2 誤差計算與繪圖工具
-5. 結果視覺化 (Example Results)
-本專案針對具有高梯度特性的 1D Bar 進行測試（Hard Case）。若啟動 r-adaptivity，可以觀察到節點（Final Nodes）會自動向應變梯度較大的區域聚集。
+|-- run_1d_study.py
+`-- src/
+    |-- benchmarks/
+    |   `-- bar_hard_case.py
+    |-- nn_modules/
+    |   |-- shape_1d.py
+    |   `-- shape_functions_1d.py
+    |-- solvers/
+    |   `-- hidenn_1d.py
+    `-- utils/
+        `-- visualization_1d.py
+```
+
+### File Guide
+
+- [`run_1d_study.py`](/d:/lab/NNFEM_1D/run_1d_study.py)  
+  專案主入口，集中管理 `STUDY_CONFIG`、訓練流程與結果分析
+
+- [`src/solvers/hidenn_1d.py`](/d:/lab/NNFEM_1D/src/solvers/hidenn_1d.py)  
+  HiDeNN 一維求解器，包含元素連接、積分流程與能量計算
+
+- [`src/nn_modules/shape_1d.py`](/d:/lab/NNFEM_1D/src/nn_modules/shape_1d.py)  
+  `L2` / `L3` 對應的 shape function 模組
+
+- [`src/benchmarks/bar_hard_case.py`](/d:/lab/NNFEM_1D/src/benchmarks/bar_hard_case.py)  
+  測試用 1D bar hard case，包括 body force 與解析解
+
+- [`src/utils/visualization_1d.py`](/d:/lab/NNFEM_1D/src/utils/visualization_1d.py)  
+  後處理、誤差分析與繪圖工具
+
+## Output
+
+程式執行後會：
+
+- 訓練 HiDeNN 模型
+- 計算 `u(x)`、`du/dx`、`d2u/dx2`
+- 與解析解比較相對 `L2` 誤差
+- 顯示最終節點位置與結果曲線
+
+若啟用 `r-adaptivity`，圖中也會顯示初始節點與最終節點的差異，方便觀察節點是否往高梯度區域集中。
+
+## Notes
+
+- 使用 `L3` 元素時，`n_nodes` 需要符合三節點元素的配置條件
+- 若訓練過程出現 `NaN`，可先降低 `learning_rate` 或 `lr_coord_scale`
+- `Global` 積分通常較直觀，`Gauss` 積分則更接近有限元素標準作法
