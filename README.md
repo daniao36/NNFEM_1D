@@ -64,6 +64,13 @@
 python run_1d_study.py
 ```
 
+### Problem Setup
+
+![Problem](docs/images/NNFEM_1D_bar.png)
+
+![Problem](docs/images/NNFEM_1D.png)
+
+
 ### Example Configuration
 
 ```python
