@@ -147,19 +147,7 @@ STUDY_CONFIG = {
 
 ## Example Figure
 
-建議把 README 用的圖片放在 `docs/images/` 下面，例如：
 
-```text
-docs/
-`-- images/
-    `-- result.png
-```
-
-然後在 README 中用以下語法插入：
-
-```md
-![Example Result](docs/images/result.png)
-```
 
 範例1 節點固定：
 
